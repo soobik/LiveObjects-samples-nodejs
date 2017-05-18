@@ -44,8 +44,8 @@ client.on("message", function (topic, message) {
 
   console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]);
   console.log("Timestamp:", loraMessage.timestamp);
-  console.log("Port:", loraMessage.value.port);
-  console.log("Fcnt:", loraMessage.value.fcnt);
+  console.log("Port:", loraMessage.metadata.network.lora.port);
+  console.log("Fcnt:", loraMessage.metadata.network.lora.fcnt);
   console.log("Payload:", loraMessage.value.payload, "\n");
 
 })
