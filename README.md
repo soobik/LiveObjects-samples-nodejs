@@ -36,4 +36,4 @@ This code is released under the BSD3 license. See the `LICENSE` file for more in
 
 ## Contact
 
-* Homepage: [lpwa.liveobjects.orange-business.com](https://lpwa.liveobjects.orange-business.com/)
+* Homepage: [liveobjects.orange-business.com](https://liveobjects.orange-business.com/)
