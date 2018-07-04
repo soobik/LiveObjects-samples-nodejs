@@ -18,6 +18,7 @@
   "license": "BSD-3",
   "homepage": "https://github.com/Orange-OpenSource/LiveObjects-samples-nodejs#readme",
   "dependencies": {
+    "log4js": "^0.6.28",
     "mqtt": "^1.10.0"
   }
 }
