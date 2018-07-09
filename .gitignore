@@ -1,0 +1,10 @@
+# IntelliJ
+.idea
+*.iml
+
+# Npm
+node_modules/
+
+# application generated
+lastfirmware.raw
+package-lock.json
