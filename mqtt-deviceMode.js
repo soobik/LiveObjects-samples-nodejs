@@ -36,8 +36,12 @@ var topicResourceUpdErr = "dev/rsc/upd/err";
 // number of connect retries allowed
 const MAX_CONNECT_RETRIES=2;
 
+function validMqttUrl(url) {
+ return /^(mqtt[s]?):\/\/(.*)\:[0-9]{4}$/.test(url);
+}
+
 // reading arguments
-if (process.argv.length < 3) {
+if (process.argv.length < 3 || !validMqttUrl(process.argv[2])) {
 	console.log("MQTT script simulating a device: ");
 	console.log("");
 	console.log("usage: node mqtt-deviceMode.js <serverURL> <apiKey> <deviceId>");
@@ -113,7 +117,7 @@ var reconnectRetry=0;
 var configFailure=0;
 var resourceFailure=0;
 var withDeviceError = false;
-
+var withDownloadStep = false;
 
 var handledConfig=0;
 var handledCommands=0;
@@ -132,6 +136,9 @@ function deviceInfo() {
   }
   if ((handledConfig+handledCommands+handledResource) > 0) {
     console.log("    handled " + handledConfig + " cfg, " +handledCommands + " cmd " + handledResource + " rsc");
+  }
+  if (withDownloadStep) {
+    console.log("    resUpd with download step");
   }
 }
 
@@ -152,6 +159,7 @@ function menu() {
   console.log("    c  add config update failure");
   console.log("    r  add resource update failure");
   console.log("    d  toggle resource update failure custom device error");
+  console.log("    f  toggle resource update download step");
   console.log("    i  display device info");
   console.log("    x  display device internal info");
   console.log("    q or <CTRL> + <c>  quit");
@@ -169,6 +177,7 @@ process.stdin.on('keypress', (str, key) => {
     case 'c': configFailure++; console.log("."); break;
     case 'r': resourceFailure++; console.log("."); break;
     case 'd': withDeviceError = !withDeviceError; console.log("."); break;
+    case 'f': withDownloadStep = !withDownloadStep; console.log("."); break;
     case 'return': break; // ignore
     default : console.log('unknown command ' + key.name);
   }
@@ -265,6 +274,13 @@ function handleCommand(message) {
 
 }
 
+function simulateResourceUpdateDone(resourceId, resourceNewVersion) {
+    // act version update internally
+    deviceResources.rsc[resourceId]["v"] = resourceNewVersion;
+    // publish new version
+    publishDeviceResources()
+}
+
 
 function handleResourceUpdate(message) {
 
@@ -319,17 +335,16 @@ function handleResourceUpdate(message) {
       logger.info("OK ["+topicResourceUpdResp+"]>" + msgOkStr);
       client.publish(topicResourceUpdResp, msgOkStr);
 
-      // download resource
-      downloadFile(resourceId, resourceNewVersion, resourceUrl, resourceSize, resourceMd5, function() {
-          // act version update internally
-          deviceResources.rsc[resourceId]["v"] = resourceNewVersion;
-
-          // publish new version
-          publishDeviceResources()
-      });
+      if (withDownloadStep) {
+          // download resource
+          downloadFile(resourceId, resourceNewVersion, resourceUrl, resourceSize, resourceMd5, function() {
+              simulateResourceUpdateDone(resourceId, resourceNewVersion);
+          });
+      } else {
+          simulateResourceUpdateDone(resourceId, resourceNewVersion);
+      }
     }
     handledResource++;
-
 }
 
 // After connection actions
@@ -367,6 +382,10 @@ client.on('message', function (topic, message) {
 
 client.on('close', function () {
 	logger.info("connection closed");
+	if (reconnectRetry >= MAX_CONNECT_RETRIES) {
+		logger.error("aborted after : "+MAX_CONNECT_RETRIES+ " retries");
+		process.exit(1);
+	}
 });
 
 
@@ -381,14 +400,6 @@ client.on('error', function (error) { // https://nodejs.org/api/errors.html#erro
 	} else {
 	  logger.error("error:" + error.message);
 	}
-	if (reconnectRetry >= MAX_CONNECT_RETRIES) {
-		logger.error("aborted after : "+MAX_CONNECT_RETRIES+ " retries");
-		process.exit(1);
-	}
-});
-
-client.on('offline', function () {
-    // useless // logger.info("offline");
 });
 
 client.on('reconnect', function () {
