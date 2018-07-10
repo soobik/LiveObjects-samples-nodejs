@@ -20,32 +20,56 @@ const apiKey = "YourApiKey"
 /** Subscription for a fifo (persisted) **/
 const mqttTopic = "fifo/default"
 
-/** connect **/
-console.log("MQTT::Connecting to ");
-var client  = mqtt.connect(url, {username:"payload", password:apiKey, keepAlive:30})
+var client;
 
-/** client on connect **/
-client.on("connect", function() {
-  console.log("MQTT::Connected");
+function onLoraMessage(loraMessage) {
 
-  client.subscribe(mqttTopic)
-  console.log("MQTT::Subscribed to topic:", mqttTopic);
-})
+      console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]);
+      console.log("Timestamp:", loraMessage.timestamp);
+      console.log("Port:", loraMessage.metadata.network.lora.port);
+      console.log("Fcnt:", loraMessage.metadata.network.lora.fcnt);
+      console.log("Payload:", loraMessage.value.payload, "\n");
 
-/** client on error **/
-client.on("error", function(err) {
-  console.log("MQTT::Error from client --> ", err);
-})
+}
 
-client.on("message", function (topic, message) {
+function onMessage(topic, message) {
 
-  console.log("MQTT::New message\n");
-  var loraMessage = JSON.parse(message)
+      console.log("MQTT::New message\n");
+      var jsonMessage = JSON.parse(message)
 
-  console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]);
-  console.log("Timestamp:", loraMessage.timestamp);
-  console.log("Port:", loraMessage.metadata.network.lora.port);
-  console.log("Fcnt:", loraMessage.metadata.network.lora.fcnt);
-  console.log("Payload:", loraMessage.value.payload, "\n");
+      if (jsonMessage.metadata == null
+       || jsonMessage.metadata.source == null
+       || jsonMessage.metadata.network.lora == null) {
+        console.log(jsonMessage);
+        return;
+      }
 
-})
+      onLoraMessage(jsonMessage);
+
+}
+
+function clientConnect() {
+    /** connect **/
+    console.log("MQTT::Connecting to ", url);
+    client  = mqtt.connect(url, {username:"payload", password:apiKey, keepAlive:30})
+
+    /** client on connect **/
+    client.on("connect", function() {
+      console.log("MQTT::Connected");
+
+      client.subscribe(mqttTopic)
+      console.log("MQTT::Subscribed to topic:", mqttTopic);
+    })
+
+    /** client on error **/
+    client.on("error", function(err) {
+      console.log("MQTT::Error from client --> ", err);
+    })
+
+    client.on("message", function (topic, message) {
+        onMessage(topic, message);
+    });
+}
+
+console.log("CTRL + C to quit");
+clientConnect();
