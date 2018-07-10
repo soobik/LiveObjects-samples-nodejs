@@ -112,6 +112,7 @@ var deviceData = {
 };
 
 //~ work attributes
+var client;
 var reconnectRetry=0;
 
 var configFailure=0;
@@ -119,16 +120,13 @@ var resourceFailure=0;
 var withDeviceError = false;
 var withDownloadStep = false;
 
+var connectionCount=0;
 var handledConfig=0;
 var handledCommands=0;
 var handledResource=0;
 
-// Key input
-readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
-
 function deviceInfo() {
-  console.log("  * urn: " + deviceUrn);
+  console.log("  * urn: " + deviceUrn + " - session #" + connectionCount);
   if ((configFailure+resourceFailure) > 0) {
     console.log("    planned failures : " + configFailure + " cfg, "
     + resourceFailure + " rsc "
@@ -153,6 +151,14 @@ function bye() {
     process.exit();
 }
 
+function forceReconnect() {
+    logger.info("forceReconnect");
+    force = true;
+    client.end(force, function() {
+        clientConnect();
+    });
+}
+
 function menu() {
   console.log("  * ~~help menu~~");
   console.log("    h  display help menu");
@@ -162,13 +168,22 @@ function menu() {
   console.log("    f  toggle resource update download step");
   console.log("    i  display device info");
   console.log("    x  display device internal info");
+  console.log("    *  force disconnect / reconnect");
   console.log("    q or <CTRL> + <c>  quit");
 }
 
+// Key input
+readline.emitKeypressEvents(process.stdin);
+process.stdin.setRawMode(true);
 process.stdin.on('keypress', (str, key) => {
   if ((key.name == 'q')
    || (key && key.ctrl && key.name == 'c')) {
     bye();
+    return;
+  }
+  if (str == '*') {
+    forceReconnect();
+    return;
   }
   switch (key.name) { // input menu key dispatcher
     case 'h': menu(); break;
@@ -178,24 +193,11 @@ process.stdin.on('keypress', (str, key) => {
     case 'r': resourceFailure++; console.log("."); break;
     case 'd': withDeviceError = !withDeviceError; console.log("."); break;
     case 'f': withDownloadStep = !withDownloadStep; console.log("."); break;
+    case '*': forceReconnect(); break;
     case 'return': break; // ignore
-    default : console.log('unknown command ' + key.name);
+    default : console.log('unknown command "' + str + '" (ctrl:' + key.ctrl + ' name:' + key.name + ')');
   }
 })
-
-// MQTT connection
-logger.info("type 'h' to see help");
-logger.info(deviceUrn + " connect to " + serverURL);
-var client = mqtt.connect(serverURL, {
-	clientId: deviceUrn,
-	username: "json+device+key",
-	password: apiKey,
-	protocolId: 'MQIsdp',
-	protocolVersion: 3,
-	rejectUnauthorized : false,
-	keepAlive:30
-});
-
 
 function subscribeTopic(topic) {
 	logger.info("subscribe ["+topic+"]");
@@ -347,62 +349,82 @@ function handleResourceUpdate(message) {
     handledResource++;
 }
 
-// After connection actions
-client.on('connect', function() {
-	logger.info("connected");
-	reconnectRetry = 0;
+function clientConnect() {
+    logger.info(deviceUrn + " connect to " + serverURL);
+    client = mqtt.connect(serverURL, {
+        clientId: deviceUrn,
+        username: "json+device+key",
+        password: apiKey,
+        protocolId: 'MQIsdp',
+        protocolVersion: 3,
+        rejectUnauthorized : false,
+        keepAlive:30
+    });
 
-    publishDeviceConfig();
+    // After connection actions
+    client.on('connect', function() {
+        logger.info("connected");
+        connectionCount++;
+        reconnectRetry = 0;
 
-    subscribeTopic(topicConfigUpdate);
+        publishDeviceConfig();
 
-    publishDeviceData();
+        subscribeTopic(topicConfigUpdate);
 
-    publishDeviceResources();
+        publishDeviceData();
 
-    subscribeTopic(topicCommand);
+        publishDeviceResources();
 
-    subscribeTopic(topicResourceUpd);
-});
+        subscribeTopic(topicCommand);
 
-// On message actions
-client.on('message', function (topic, message) {
+        subscribeTopic(topicResourceUpd);
+    });
 
-	if (topic == topicConfigUpdate) {       // dev/cfg
-        handleConfigUpdate(message);
-	} else if (topic == topicCommand) {     // dev/cmd
-        handleCommand(message);
-	} else if (topic == topicResourceUpd){  // dev/rsc/upd
-        handleResourceUpdate(message)
-	} else {
-		logger.error("received unexpected message: <["+topic+"] ", message);
-	}
+    // On message actions
+    client.on('message', function (topic, message) {
 
-});
+        if (topic == topicConfigUpdate) {       // dev/cfg
+            handleConfigUpdate(message);
+        } else if (topic == topicCommand) {     // dev/cmd
+            handleCommand(message);
+        } else if (topic == topicResourceUpd){  // dev/rsc/upd
+            handleResourceUpdate(message)
+        } else {
+            logger.error("received unexpected message: <["+topic+"] ", message);
+        }
 
-client.on('close', function () {
-	logger.info("connection closed");
-	if (reconnectRetry >= MAX_CONNECT_RETRIES) {
-		logger.error("aborted after : "+MAX_CONNECT_RETRIES+ " retries");
-		process.exit(1);
-	}
-});
+    });
+
+    client.on('close', function () {
+        logger.info("connection closed");
+        if (reconnectRetry >= MAX_CONNECT_RETRIES) {
+            logger.error("aborted after "+MAX_CONNECT_RETRIES+ " retries");
+            process.exit(1);
+        }
+    });
 
 
-// Other callbacks
-client.on('suback', function (topic, message) {
-	logger.info("subscribed to "+topic);
-});
+    // Other callbacks
+    client.on('suback', function (topic, message) {
+        logger.info("subscribed to "+topic);
+    });
 
-client.on('error', function (error) { // https://nodejs.org/api/errors.html#errors_class_error
-    if (error.code) {
-	  logger.error("error code:" + error.code + " message:" + error.message);
-	} else {
-	  logger.error("error:" + error.message);
-	}
-});
+    client.on('error', function (error) { // https://nodejs.org/api/errors.html#errors_class_error
+        if (error.code) {
+          logger.error("error code:" + error.code + " message:" + error.message);
+        } else {
+          logger.error("error:" + error.message);
+        }
+    });
 
-client.on('reconnect', function () {
-	reconnectRetry++;
-	logger.info("reconnect (retry " + reconnectRetry + ")");
-});
+    client.on('reconnect', function () {
+        reconnectRetry++;
+        logger.info("reconnect (retry " + reconnectRetry + ")");
+    });
+}
+
+
+// Main entry-point
+logger.info("type 'h' to see help");
+
+clientConnect();
