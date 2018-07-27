@@ -12,10 +12,10 @@ const apiKey = "YourApiKey"
 
 
 /** Subscription for one specific device (pub sub) **/
-// const mqttTopic = "router/~event/v1/data/new/urn/lora/0123456789ABCDEF/#"
+// const mqttTopic = "router/~event/v1/data/new/typ/+/dev/urn:lo:nsid:lora:0123456789ABCDEF/con/lora/evt/+/grp/#"
 
 /** Subscription for all devices (pub sub) **/
-// const mqttTopic = "router/~event/v1/data/new/urn/lora/#"
+// const mqttTopic = "router/~event/v1/data/new/typ/+/dev/+/con/lora/evt/+/grp/#"
 
 /** Subscription for a fifo (persisted) **/
 const mqttTopic = "fifo/default"
@@ -24,7 +24,7 @@ var client;
 
 function onLoraMessage(loraMessage) {
 
-      console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]);
+      console.log("DevEUI:", loraMessage.metadata.source.split(':')[4]);
       console.log("Timestamp:", loraMessage.timestamp);
       console.log("Port:", loraMessage.metadata.network.lora.port);
       console.log("Fcnt:", loraMessage.metadata.network.lora.fcnt);
@@ -50,7 +50,7 @@ function onMessage(topic, message) {
 
 function clientConnect() {
     /** connect **/
-    console.log("MQTT::Connecting to ", url);
+    console.log("MQTT::Connecting to", url);
     client  = mqtt.connect(url, {username:"payload", password:apiKey, keepAlive:30})
 
     /** client on connect **/

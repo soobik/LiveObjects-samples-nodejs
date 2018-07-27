@@ -21,7 +21,7 @@ $ git clone https://github.com/Orange-OpenSource/LiveObjects-samples-nodejs.git
 
 ### Sample LoRa mqtt client
 
-In order to retrieve data, a valid LoRa device must be provisioned on your account. You should have a valid API-KEY with at least LPWA_USER role.
+In order to retrieve data, a valid LoRa device must be provisioned on your account. You should have a valid API-KEY with at least BUS_R role.
 
 Open the mqtt-client.js
 
