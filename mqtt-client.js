@@ -10,12 +10,17 @@ var mqtt = require('mqtt')
 const url = "mqtt://liveobjects.orange-business.com:1883"
 const apiKey = "YourApiKey"
 
-
-/** Subscription for one specific device (pub sub) **/
+/** Subscription for one specific device (pub sub) (deprecated and will be decommissioned in december 2018) **/
 // const mqttTopic = "router/~event/v1/data/new/urn/lora/0123456789ABCDEF/#"
 
-/** Subscription for all devices (pub sub) **/
+/** Subscription for all devices (pub sub) (deprecated and will be decommissioned in december 2018) **/
 // const mqttTopic = "router/~event/v1/data/new/urn/lora/#"
+
+/** Subscription for one specific device (pub sub) (new) **/
+// const mqttTopic = "router/~event/v1/data/new/typ/+/dev/urn:lo:nsid:lora:0123456789ABCDEF/con/lora/evt/+/grp/#"
+
+/** Subscription for all devices (pub sub) (new) **/
+// const mqttTopic = "router/~event/v1/data/new/typ/+/dev/+/con/lora/evt/+/grp/#"
 
 /** Subscription for a fifo (persisted) **/
 const mqttTopic = "fifo/default"
@@ -24,7 +29,8 @@ var client;
 
 function onLoraMessage(loraMessage) {
 
-      console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]);
+      console.log("DevEUI:", loraMessage.metadata.source.split(':')[2]); //use this if you are using one of the deprecated topics
+	  //console.log("DevEUI:", loraMessage.metadata.source.split(':')[4]); //use this if you are using one of the new topics
       console.log("Timestamp:", loraMessage.timestamp);
       console.log("Port:", loraMessage.metadata.network.lora.port);
       console.log("Fcnt:", loraMessage.metadata.network.lora.fcnt);
@@ -50,7 +56,7 @@ function onMessage(topic, message) {
 
 function clientConnect() {
     /** connect **/
-    console.log("MQTT::Connecting to ", url);
+    console.log("MQTT::Connecting to", url);
     client  = mqtt.connect(url, {username:"payload", password:apiKey, keepAlive:30})
 
     /** client on connect **/
