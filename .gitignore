@@ -8,3 +8,5 @@ node_modules/
 # application generated
 lastfirmware.raw
 package-lock.json
+
+*.dontpush.*

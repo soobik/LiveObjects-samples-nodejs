@@ -378,6 +378,8 @@ function clientConnect() {
         subscribeTopic(topicCommand);
 
         subscribeTopic(topicResourceUpd);
+
+        logger.info("type 'h' to see help");
     });
 
     // On message actions
@@ -423,8 +425,5 @@ function clientConnect() {
     });
 }
 
-
 // Main entry-point
-logger.info("type 'h' to see help");
-
 clientConnect();

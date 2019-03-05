@@ -38,6 +38,34 @@ Open the mqtt-client.js
 2. type 'h' to see device help menu or 'q' to disconnect.
 
 
+### Sample Mqtt debug mode client
+
+Mqtt debug mode client is an application that listen to your tenant events:
+- asset connected / disconnected events,
+- event processing events,
+- mqtt debug messages.
+
+Once connected and using menu (via LiveObjects Rest API), you could:
+ - (`k`) ask your current apiKey details,
+ - (`d`) set debug mode for the current apiKey for the next two hours.  
+
+1. Update your environment
+  
+   Use `initEnv.template.sh` as example.
+    > cp initEnv.template.sh initProject.dontpush.sh
+
+   Update `initProject.dontpush.sh` with your needs: apiKey, api endpoint, and verbose level.
+
+   Then source it 
+    > . ./initProject.dontpush.sh
+
+2. run the mqttDebug.js:
+    > node mqttDebug.js
+
+3. type 'h' to see device help menu or 'q' to disconnect.
+
+
+
 ## License
 
 Copyright (c) 2015 — 2018 Orange
